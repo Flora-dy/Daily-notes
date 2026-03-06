@@ -516,8 +516,6 @@ def render_record_card_html(rec: dict) -> str:
     title = safe_text(rec.get("demand", ""), 300)
     note = safe_text(rec.get("note", ""), 500)
     date_part, time_part = format_date_parts(rec.get("createdAt", ""))
-    updated_at = format_time_short(rec.get("updatedAt", ""))
-    short_id = safe_text(rec.get("id", ""), 16)
     source_cls = "source-unresolved" if source == "未分解" else "source-normal"
     category_cls = "category-generic" if category == "通用" else "category-normal"
 
@@ -540,7 +538,6 @@ def render_record_card_html(rec: dict) -> str:
     </div>
   </div>
   {note_html}
-  <div class="record-foot">更新: {html.escape(updated_at)} · ID: {html.escape(short_id)}</div>
 </article>
 """
 
@@ -637,12 +634,6 @@ div[data-testid="stMetric"] { background: #ffffff; border: 1px solid #dfe7d9; pa
   line-height: 1.5;
   font-size: 0.88rem;
 }
-.record-foot {
-  grid-column: 2 / 3;
-  margin: 8px 14px 10px 14px;
-  color: #7a828c;
-  font-size: 0.75rem;
-}
 @media (max-width: 680px) {
   .record-card { grid-template-columns: 1fr; }
   .record-side {
@@ -656,7 +647,6 @@ div[data-testid="stMetric"] { background: #ffffff; border: 1px solid #dfe7d9; pa
   .record-clock { margin-top: 0; font-size: 0.95rem; }
   .record-main { padding: 10px 12px; }
   .record-note { grid-column: 1 / 2; margin: 0 12px; }
-  .record-foot { grid-column: 1 / 2; margin: 8px 12px 10px 12px; }
 }
 </style>
 """,
