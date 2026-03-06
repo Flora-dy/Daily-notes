@@ -1,5 +1,6 @@
 import io
 import json
+import html
 import re
 import uuid
 from datetime import datetime, timezone
@@ -490,12 +491,173 @@ def filter_records(records: list[dict], status_filter: str, priority_filter: str
     return filtered
 
 
+def format_time_short(value: str) -> str:
+    text = safe_text(value, 30).replace("T", " ")
+    return text[:16]
+
+
+def format_date_parts(value: str) -> tuple[str, str]:
+    short = format_time_short(value)
+    if len(short) >= 16 and " " in short:
+        date_part, time_part = short.split(" ", 1)
+        return date_part, time_part
+    if len(short) >= 10:
+        return short[:10], short[10:].strip() or "--:--"
+    return short or "--", "--:--"
+
+
+def render_record_card_html(rec: dict) -> str:
+    priority = normalize_priority(rec.get("priority", "normal"))
+    status = normalize_status(rec.get("status", "pending"))
+    priority_cn = PRIORITY_EN_TO_CN.get(priority, "普通")
+    status_cn = STATUS_EN_TO_CN.get(status, "待处理")
+    source = display_source(rec.get("source", ""), rec.get("demand", ""), rec.get("note", ""))
+    category = normalize_category(rec.get("category", ""))
+    title = safe_text(rec.get("demand", ""), 300)
+    note = safe_text(rec.get("note", ""), 500)
+    date_part, time_part = format_date_parts(rec.get("createdAt", ""))
+    updated_at = format_time_short(rec.get("updatedAt", ""))
+    short_id = safe_text(rec.get("id", ""), 16)
+    source_cls = "source-unresolved" if source == "未分解" else "source-normal"
+    category_cls = "category-generic" if category == "通用" else "category-normal"
+
+    note_html = f'<div class="record-note">{html.escape(note)}</div>' if note else ""
+    return f"""
+<article class="record-card priority-{priority} statusbg-{status}">
+  <div class="record-side">
+    <div class="record-date">{html.escape(date_part)}</div>
+    <div class="record-clock">{html.escape(time_part)}</div>
+  </div>
+  <div class="record-main">
+    <div class="record-head">
+      <div class="record-title">{html.escape(title)}</div>
+      <span class="badge priority priority-{priority}">{html.escape(priority_cn)}</span>
+    </div>
+    <div class="record-badges">
+      <span class="badge status status-{status}">{html.escape(status_cn)}</span>
+      <span class="badge source {source_cls}">来源: {html.escape(source)}</span>
+      <span class="badge category {category_cls}">分类: {html.escape(category)}</span>
+    </div>
+  </div>
+  {note_html}
+  <div class="record-foot">更新: {html.escape(updated_at)} · ID: {html.escape(short_id)}</div>
+</article>
+"""
+
+
 st.set_page_config(page_title="日常流水记录助手", layout="wide")
 st.markdown(
     """
 <style>
 .stApp { background: #f4f7f2; }
 div[data-testid="stMetric"] { background: #ffffff; border: 1px solid #dfe7d9; padding: 8px 10px; }
+.daily-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+.record-card {
+  background: #ffffff;
+  border: 1px solid #dfe7d9;
+  border-left: 8px solid #95a3a1;
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(45, 76, 58, 0.06);
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  overflow: hidden;
+}
+.record-card.priority-urgent { border-left-color: #d95757; }
+.record-card.priority-high { border-left-color: #d9a63f; }
+.record-card.priority-normal { border-left-color: #5f8d74; }
+.record-card.statusbg-pending { background: #fffef8; }
+.record-card.statusbg-in-progress { background: #fbfdff; }
+.record-card.statusbg-done { background: #fbfffc; }
+.record-side {
+  background: #ecf2ea;
+  border-right: 1px solid #d9e3d7;
+  padding: 14px 10px;
+}
+.record-date {
+  font-size: 0.84rem;
+  color: #355544;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.record-clock {
+  margin-top: 6px;
+  font-size: 1.15rem;
+  color: #274535;
+  font-weight: 800;
+}
+.record-main {
+  padding: 12px 14px 10px 14px;
+}
+.record-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.record-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.5;
+}
+.record-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.badge.priority-normal { background: #e8f5ec; color: #2f6d4a; }
+.badge.priority-high { background: #fff2df; color: #7c4f08; }
+.badge.priority-urgent { background: #fde5e5; color: #982f2f; }
+.badge.status-pending { background: #fff7dc; color: #7c5f00; }
+.badge.status-in-progress { background: #e8f1ff; color: #235795; }
+.badge.status-done { background: #e7f7ec; color: #1f6f43; }
+.badge.source-normal { background: #edf2fb; color: #3b5678; }
+.badge.source-unresolved { background: #f2f4f6; color: #6b7280; }
+.badge.category-normal { background: #edf7ee; color: #2f6d4a; }
+.badge.category-generic { background: #f3f5f3; color: #6f7b73; }
+.record-note {
+  grid-column: 2 / 3;
+  margin: 0 14px 0 14px;
+  padding: 8px 0 0 0;
+  color: #3f4a54;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+.record-foot {
+  grid-column: 2 / 3;
+  margin: 8px 14px 10px 14px;
+  color: #7a828c;
+  font-size: 0.75rem;
+}
+@media (max-width: 680px) {
+  .record-card { grid-template-columns: 1fr; }
+  .record-side {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-right: none;
+    border-bottom: 1px solid #d9e3d7;
+    padding: 8px 12px;
+  }
+  .record-clock { margin-top: 0; font-size: 0.95rem; }
+  .record-main { padding: 10px 12px; }
+  .record-note { grid-column: 1 / 2; margin: 0 12px; }
+  .record-foot { grid-column: 1 / 2; margin: 8px 12px 10px 12px; }
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -601,21 +763,28 @@ with tab_add:
 with tab_list:
     filtered_records = filter_records(records, status_filter, priority_filter, keyword)
     st.subheader(f"流水列表（{len(filtered_records)} 条）")
-    display_rows = []
-    for rec in filtered_records:
-        display_rows.append(
-            {
-                "时间": safe_text(rec.get("createdAt", ""), 30).replace("T", " ")[:16],
-                "事项": rec.get("demand", ""),
-                "来源": display_source(rec.get("source", ""), rec.get("demand", ""), rec.get("note", "")),
-                "分类": rec.get("category", ""),
-                "优先级": PRIORITY_EN_TO_CN.get(rec.get("priority", "normal"), "普通"),
-                "状态": STATUS_EN_TO_CN.get(rec.get("status", "pending"), "待处理"),
-                "备注": rec.get("note", ""),
-                "ID": rec.get("id", ""),
-            }
-        )
-    st.dataframe(pd.DataFrame(display_rows), use_container_width=True, hide_index=True)
+    if not filtered_records:
+        st.info("没有符合筛选条件的记录。")
+    else:
+        cards_html = "".join(render_record_card_html(rec) for rec in filtered_records)
+        st.markdown(f'<div class="daily-list">{cards_html}</div>', unsafe_allow_html=True)
+
+        with st.expander("查看表格明细"):
+            display_rows = []
+            for rec in filtered_records:
+                display_rows.append(
+                    {
+                        "时间": format_time_short(rec.get("createdAt", "")),
+                        "事项": rec.get("demand", ""),
+                        "来源": display_source(rec.get("source", ""), rec.get("demand", ""), rec.get("note", "")),
+                        "分类": rec.get("category", ""),
+                        "优先级": PRIORITY_EN_TO_CN.get(rec.get("priority", "normal"), "普通"),
+                        "状态": STATUS_EN_TO_CN.get(rec.get("status", "pending"), "待处理"),
+                        "备注": rec.get("note", ""),
+                        "ID": rec.get("id", ""),
+                    }
+                )
+            st.dataframe(pd.DataFrame(display_rows), use_container_width=True, hide_index=True)
 
     excel_data = to_excel_bytes(filtered_records)
     st.download_button(
