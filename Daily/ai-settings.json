@@ -1,0 +1,33 @@
+{
+  "rules": [
+    { "keyword": "辅料", "category": "辅料策略" },
+    { "keyword": "益生元", "category": "辅料策略" },
+    { "keyword": "载体", "category": "辅料策略" },
+    { "keyword": "功能辅料的数据库", "category": "数据库建设" },
+    { "keyword": "数据库先积累", "category": "数据库建设" },
+    { "keyword": "功能辅料", "category": "功能辅料研究" },
+    { "keyword": "数据库", "category": "数据库建设" },
+    { "keyword": "法规", "category": "法规评估" },
+    { "keyword": "非转基因", "category": "质量合规" },
+    { "keyword": "过敏原", "category": "质量合规" },
+    { "keyword": "有机", "category": "质量合规" },
+    { "keyword": "糖尿病", "category": "特殊人群" },
+    { "keyword": "肿瘤患者", "category": "特殊人群" },
+    { "keyword": "脑肠轴", "category": "产品开发" },
+    { "keyword": "猴头菇", "category": "原料" },
+    { "keyword": "临床", "category": "临床合作" },
+    { "keyword": "配方", "category": "配方开发" },
+    { "keyword": "周报", "category": "报告" },
+    { "keyword": "月报", "category": "报告" },
+    { "keyword": "汇报", "category": "报告" },
+    { "keyword": "会议", "category": "会议" },
+    { "keyword": "评审", "category": "会议" },
+    { "keyword": "合同", "category": "法务" },
+    { "keyword": "发票", "category": "财务" },
+    { "keyword": "付款", "category": "财务" },
+    { "keyword": "采购", "category": "采购" },
+    { "keyword": "上线", "category": "项目" },
+    { "keyword": "排期", "category": "项目" },
+    { "keyword": "招聘", "category": "人事" }
+  ]
+}
